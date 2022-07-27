@@ -6,7 +6,10 @@ pipeline {
                 sh "echo 'Build'"
                 sh 'id'
                 sh 'pwd'
+                sh "echo '${env.BUILD_ID}'"
                 sh 'docker build . -f Dockerfile -t appcode:build'
+                sh 'docker images'
+                sh 'sleep 15'
             }
         }
         //def containerName
@@ -16,26 +19,34 @@ pipeline {
 
                 // run container
                 sh "echo 'run image'"
-                sh "docker rm -f appcode"   // remove container if exist
-//                sh "docker network create networkBuild"  // create bridge network
-//                sh "docker run --name containerBuild --network networkBuild --rm -d -p80:80 appcode:build"
-                sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
+                sh 'id'
+                sh 'pwd'
+                sh 'ls'
+                sh "docker rm -f containerBuild"   // remove container if exist
+                script {
 
-                // unit test
-                sh "echo 'unit test'"
-                //containerName = 
-                sh(
-                    script: "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
-//                    returnStdout: true,
-                )
+                    sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
 
-                // system integration test
-                sh "echo 'system integration test'"
-                sh "sleep 30"
-                sh "python sit.py"          // check home page
+                    // unit test
+                    sh "echo 'unit test'"
+                    sh "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
 
-                // remove container
-                sh "docker rm -f containerBuild"
+                    // system integration test
+                    sh "echo 'system integration test'"
+                    // get container IP
+                    String IP
+                    IP = sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
+                    echo ${IP}
+                    try {
+                        sh "export PATH=$PATH:/opt; python sit.py ${IP}"          // check home page
+                    } catch (err) {
+                        echo err.getMessage()
+                    }
+
+                    // remove container
+                    sh "sleep 36000"
+                    sh "docker rm -f containerBuild"
+                }
             }
         }
         stage('Push Docker Image') {
@@ -44,6 +55,7 @@ pipeline {
                 script {
                     try {
                         sh "docker tag appcode:build  dwlpm/appcode"
+                        sh "docker tag appcode:build  appcode:"
                         sh "docker push dwlpm/appcode"
                     } catch (err) {
                         echo err.getMessage()
@@ -53,7 +65,7 @@ pipeline {
         }
         stage('Create Artifact') {
             steps {
-                sh "echo '${currentBuild.currentResult}, ${env.JOB_NAME}, ${env.BUILD_URL}'  >> artifact.csv"
+                sh "echo '${currentBuild.currentResult}, ${env.JOB_NAME}, ${env.BUILD_ID}, ${env.BUILD_NUMBER}, ${env.BUILD_URL}'  >> artifact.csv"
             }
         }
         // stage('Deploy to ECS/EKS') {
