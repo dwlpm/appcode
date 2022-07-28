@@ -7,6 +7,7 @@ pipeline {
                 sh 'id'
                 sh 'pwd'
                 sh "echo '${env.BUILD_ID}'"
+                sh 'ls -l'
                 sh 'docker build . -f Dockerfile -t appcode:build'
                 sh 'docker images'
                 sh 'sleep 15'
@@ -23,30 +24,33 @@ pipeline {
                 sh 'pwd'
                 sh 'ls'
                 sh "docker rm -f containerBuild"   // remove container if exist
+
+                sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
+                sh "docker ps -a"
+
+                // unit test
+                sh "echo 'unit test'"
+                sh "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
+
+                // system integration test
+                sh "echo 'system integration test'"
+                // get container IP
                 script {
-
-                    sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
-
-                    // unit test
-                    sh "echo 'unit test'"
-                    sh "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
-
-                    // system integration test
-                    sh "echo 'system integration test'"
-                    // get container IP
-                    String IP
-                    IP = sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
-                    echo ${IP}
-                    try {
-                        sh "export PATH=$PATH:/opt; python sit.py ${IP}"          // check home page
-                    } catch (err) {
-                        echo err.getMessage()
-                    }
-
-                    // remove container
-                    sh "sleep 36000"
-                    sh "docker rm -f containerBuild"
+//                    def IP
+//                    IP = sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
+                    sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
+//                    echo ${IP}
+                    sh 'sleep 5'
+                    echo "-------------------------------"
+                    sh 'sleep 5'
+//                    sh "export PATH=$PATH:/opt; echo $PATH; python sit.py ${IP}"          // check home page
                 }
+                echo "-------------------------------"
+                sh 'sleep 5'
+
+                // remove container
+                sh "sleep 36000"
+                sh "docker rm -f containerBuild"
             }
         }
         stage('Push Docker Image') {
@@ -55,7 +59,7 @@ pipeline {
                 script {
                     try {
                         sh "docker tag appcode:build  dwlpm/appcode"
-                        sh "docker tag appcode:build  appcode:"
+                        sh "docker tag appcode:build  complete:${env.BUILD_ID}"
                         sh "docker push dwlpm/appcode"
                     } catch (err) {
                         echo err.getMessage()
