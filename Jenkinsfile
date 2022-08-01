@@ -36,17 +36,17 @@ pipeline {
                 sh "echo 'system integration test'"
                 // get container IP
                 script {
-//                    def IP
-//                    IP = sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
-                    sh "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild"
-//                    echo ${IP}
-                    sh 'sleep 5'
-                    echo "-------------------------------"
-                    sh 'sleep 5'
-//                    sh "export PATH=$PATH:/opt; echo $PATH; python sit.py ${IP}"          // check home page
+                    sh '''
+                        echo "Multiline shell steps works too"
+                        pwd
+                        ls -lah
+                        export containerIP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild)
+                        echo $containerIP
+                        sleep 5
+                        export PATH=$PATH:/opt; echo $PATH; python sit.py $containerIP   # test home page
+                        sleep 5
+                    '''
                 }
-                echo "-------------------------------"
-                sh 'sleep 5'
 
                 // remove container
                 sh "sleep 36000"
