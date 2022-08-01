@@ -1,20 +1,38 @@
+import sys
+import unittest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
 
-# instance of Options class to configure Headless Chrome
 options = Options()
-
-# run without UI (Headless)
 options.headless = True
 
 # initializing webdriver for Chrome with options
 driver = webdriver.Chrome(options=options)
 
-# getting home page 
-driver.get('https://containerBuild:80')
+class PythonTestHomepage(unittest.TestCase):
 
-# output webpage title
-print(driver.title)
+    def setUp(self):
+        self.driver = webdriver.Chrome(options=options)
 
-# close browser
-driver.close()
+    def test_home_page(self):
+        driver = self.driver
+
+        url='http://' + website
+        driver.get(url)
+        print(url)
+
+        print(driver.title)
+        self.assertIn("appcode title", driver.title)  # match http://localhost/index.php page title
+
+    def tearDown(self):
+        self.driver.close()
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        website = sys.argv.pop()
+        unittest.main()
+    else:
+        print('usage: sit.py www.lpm.hk')
+
