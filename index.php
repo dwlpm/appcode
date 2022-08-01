@@ -1,8 +1,18 @@
-<?php
-require_once __DIR__ . '/vendor/autoload.php';
+<!DOCTYPE html>
+<html>
+<head>
+<title>appcode title</title>
+</head>
+<body>
 
-use Silarhi\Hello;
+    <?php
+    require_once __DIR__ . '/vendor/autoload.php';
 
-$hello = new Hello();
-echo $hello->display() . "\n";
-?>
+    use Silarhi\Hello;
+
+    $hello = new Hello();
+    echo $hello->display() . "\n";
+    ?>
+
+</body>
+</html>
