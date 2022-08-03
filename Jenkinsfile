@@ -42,7 +42,7 @@ pipeline {
                 }
 
                 // remove container
-                sh "sleep 36000"   # for troubleshooting use
+                sh "sleep 36000"   // for troubleshooting use
                 sh "docker rm -f containerBuild"
             }
         }
