@@ -32,10 +32,10 @@ pipeline {
                 sh "echo 'system integration test..'"
                 script {
                     sh '''
-                        // get container IP
+                        # get container IP
                         export containerIP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild)
                         echo "container IP: $containerIP"
-                        // test home page
+                        # test home page
                         export PATH=$PATH:/opt; echo $PATH; python sit.py ${containerIP}/index.php
                         sleep 5
                     '''
