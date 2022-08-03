@@ -20,7 +20,7 @@ pipeline {
 
                 // run container
                 sh "docker rm -f containerBuild"   // remove container if exist
-                sh "echo "run image appcode:build "
+                sh "echo 'run image appcode:build' "
                 sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
                 sh "docker ps -a"
 
