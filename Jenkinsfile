@@ -3,14 +3,14 @@ pipeline {
     stages { 
         stage ('Build') {
             steps {
-                sh "echo 'Build'"
+                sh "echo 'Build..'"
                 sh 'id'
                 sh 'pwd'
-                sh "echo '${env.BUILD_ID}'"
-                sh 'ls -l'
+                sh "echo 'build id: ${env.BUILD_ID}'"
+
+                // build and tag as "appcode:build"
                 sh 'docker build . -f Dockerfile -t appcode:build'
                 sh 'docker images'
-                sh 'sleep 15'
             }
         }
         //def containerName
@@ -19,43 +19,43 @@ pipeline {
                 sh "echo 'Testing..'"
 
                 // run container
-                sh "echo 'run image'"
                 sh 'id'
                 sh 'pwd'
-                sh 'ls'
+
                 sh "docker rm -f containerBuild"   // remove container if exist
 
+                sh "echo "run image appcode:build "
                 sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
                 sh "docker ps -a"
 
                 // unit test
-                sh "echo 'unit test'"
+                sh "echo 'unit test..'"
                 sh "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
 
                 // system integration test
-                sh "echo 'system integration test'"
-                // get container IP
+                sh "echo 'system integration test..'"
                 script {
                     sh '''
                         echo "Multiline shell steps works too"
                         pwd
-                        ls -lah
+                        ls
+                        // get container IP
                         export containerIP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild)
-                        echo $containerIP
-                        sleep 5
-                        export PATH=$PATH:/opt; echo $PATH; python sit.py $containerIP   # test home page
+                        echo "container IP: $containerIP"
+                        // test home page
+                        export PATH=$PATH:/opt; echo $PATH; python sit.py $containerIP
                         sleep 5
                     '''
                 }
 
                 // remove container
-                sh "sleep 36000"
+                sh "sleep 36000"   # for troubleshooting use
                 sh "docker rm -f containerBuild"
             }
         }
         stage('Push Docker Image') {
             steps {
-                sh "echo 'tag and push image'"
+                sh "echo 'tag and push image..'"
                 script {
                     try {
                         sh "docker tag appcode:build  dwlpm/appcode"
