@@ -19,11 +19,7 @@ pipeline {
                 sh "echo 'Testing..'"
 
                 // run container
-                sh 'id'
-                sh 'pwd'
-
                 sh "docker rm -f containerBuild"   // remove container if exist
-
                 sh "echo "run image appcode:build "
                 sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
                 sh "docker ps -a"
@@ -36,14 +32,11 @@ pipeline {
                 sh "echo 'system integration test..'"
                 script {
                     sh '''
-                        echo "Multiline shell steps works too"
-                        pwd
-                        ls
                         // get container IP
                         export containerIP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild)
                         echo "container IP: $containerIP"
                         // test home page
-                        export PATH=$PATH:/opt; echo $PATH; python sit.py $containerIP
+                        export PATH=$PATH:/opt; echo $PATH; python sit.py ${containerIP}/index.php
                         sleep 5
                     '''
                 }
