@@ -1,60 +1,88 @@
 pipeline { 
-agent any 
+  agent any
     stages { 
-        stage('Pre-build') {
-            steps {
-              echo 'Pre-build, check environment ..'
-              sh 'php -v'
-              sh 'id'
-              sh 'pwd'
-              sh 'ls -al'
-              script {
-                def browsers = ['chrome', 'firefox']
-                for (int i = 0; i < browsers.size(); ++i) {
-                    echo "Testing the ${browsers[i]} browser"
-                }
-              }
-            }
-        }
         stage ('Build') {
-            agent {
-                docker {
-                        image 'dwlpm/lpmm2:v1.0.2'
-                        args '-v /home/jenkins:/home/jenkins'
-                        args '-v /opt/auth.json:/root/.composer/auth.json'
-                }
-            }
             steps {
-                sh "echo 'Build'"
+                sh "echo 'Build..'"
                 sh 'id'
                 sh 'pwd'
-                sh "git clone https://github.com/dwlpm/appcode.git"
-                sh 'cd appcode; composer install'
-                // sh 'php bin/magento'
+                sh "echo 'build id: ${env.BUILD_ID}'"
+
+                // build and tag as "appcode:build"
+                sh 'docker build . -f Dockerfile -t appcode:build'
+                sh 'docker images'
             }
         }
+        //def containerName
         stage('Test') {
             steps {
                 sh "echo 'Testing..'"
-                sh "cd appcode; ./vendor/bin/phpunit ./tests"
-            }
-        }
-        stage('Build Docker Image') {
-            steps {
-                echo 'build image'
+
+                // run container
+                sh "docker rm -f containerBuild"   // remove container if exist
+                sh "echo 'run image appcode:build' "
+                sh "docker run --name containerBuild --rm -d -p80:80 appcode:build"
+                sh "docker ps -a"
+
+                // unit test
+                sh "echo 'unit test..'"
+                sh "docker exec containerBuild bash -c './vendor/bin/phpunit ./tests' "
+
+                // system integration test
+                sh "echo 'system integration test..'"
+                script {
+                    sh '''
+                        # get container IP
+                        export containerIP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' containerBuild)
+                        echo "container IP: $containerIP"
+                        # test home page
+                        export PATH=$PATH:/opt; echo $PATH; python sit.py ${containerIP}/index.php
+                        sleep 5
+                    '''
+                }
+
+                // remove container
+                sh "sleep 36000"   // for troubleshooting use
+                sh "docker rm -f containerBuild"
             }
         }
         stage('Push Docker Image') {
             steps {
-                echo 'push image'
+                sh "echo 'tag and push image..'"
+                script {
+                    try {
+                        sh "docker tag appcode:build  dwlpm/appcode"
+                        sh "docker tag appcode:build  complete:${env.BUILD_ID}"
+                        sh "docker push dwlpm/appcode"
+                    } catch (err) {
+                        echo err.getMessage()
+                    }
+                }
             }
         }
-        stage('Deploy to ECS/EKS') {
+        stage('Create Artifact') {
             steps {
-                echo 'deploy manifest'
+                sh "echo '${currentBuild.currentResult}, ${env.JOB_NAME}, ${env.BUILD_ID}, ${env.BUILD_NUMBER}, ${env.BUILD_URL}'  >> artifact.csv"
             }
         }
-      
-    }           
- }
+        // stage('Deploy to ECS/EKS') {
+        //     steps {
+        //         echo 'deploy manifest'
+        //     }
+        // }
+    }
 
+    // email notification
+    post {
+        always {
+            archiveArtifacts artifacts: '*.csv', onlyIfSuccessful: true
+
+            emailext to: "derekwu@lpm.hk",
+            subject: "jenkins build:${currentBuild.currentResult}: ${env.JOB_NAME}",
+            body: "${currentBuild.currentResult}: Job ${env.JOB_NAME}\nMore Info can be found here: ${env.BUILD_URL}",
+            attachmentsPattern: '*.csv'
+
+        cleanWs()
+        }
+    }        
+}
